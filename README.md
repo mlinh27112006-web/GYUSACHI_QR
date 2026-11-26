@@ -4,12 +4,13 @@
 
 ## Nhóm thực hiện
 
-| Họ tên | MSSV | Tài khoản GitHub | Vai trò | Nhánh |
-| --- | --- | --- | --- | --- |
-| Mai Linh (nhóm trưởng) | ... | ... | Nền tảng, đăng nhập, quản trị | feature/mai-linh-core |
-| Hồng Ngọc | ... | ... | Thu ngân, báo cáo | feature/hong-ngoc-cashier |
-| Thúy Hằng | ... | ... | Phục vụ, khách quét QR | feature/thuy-hang-staff |
-| Nguyên An | ... | ... | Bếp, thực đơn, kho, kiểm thử | feature/nguyen-an-kitchen |
+| Người | Họ tên | MSSV | Tài khoản GitHub | Phần phụ trách |
+|---|---|---|---|---|
+| Nhóm trưởng | Tô Thị Mai Linh | 3120224088 | mlinh27112006-web | feature/mai-linh-core |
+| Thành viên 2 | Trương Hồng Ngọc | 3120224101 | hongngoc060301-arch | feature/hong-ngoc-cashier |
+| Thành viên 3 | Thái Nguyên An | 3120224001 | nguyenandn2006-bot | feature/nguyen-an-kitchen |
+| Thành viên 4 | Nguyễn Thúy Hằng | 3120224046 | nguyenthuyhang240506-commits | feature/thuy-hang-staff |
+
 
 ## Cấu trúc
 
