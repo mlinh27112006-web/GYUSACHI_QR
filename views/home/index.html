@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>GYU SACHI - Nhà Hàng Nướng Nhật</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #050505;
+    }
+
+    /* Hiệu ứng card */
+    .login-card {
+      transition: all 0.25s ease;
+    }
+
+    .login-card:hover {
+      transform: translateY(-6px);
+    }
+
+    .buffet-card.selected {
+      border-color: #dc2626;
+      background: #450a0a;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+
+  <main class="max-w-6xl w-full mx-auto px-4 py-16">
+
+    <div id="view-login" class="space-y-8">
+
+
+      <div class="text-center">
+
+        <h2 class="text-3xl font-bold text-white uppercase tracking-wider">
+          ĐĂNG NHẬP HỆ THỐNG
+        </h2>
+
+        <p class="text-slate-400 mt-2">
+          Vui lòng lựa chọn bộ phận làm việc
+        </p>
+
+      </div>
+
+
+      <!-- 3 ô đăng nhập -->
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+
+        <!-- QUẢN LÍ -->
+
+        <button
+          onclick="location.href='/quanli'"
+          class="login-card bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-red-500 rounded-2xl p-10 flex flex-col items-center justify-center group shadow-xl">
+
+          <div
+            class="w-20 h-20 rounded-full bg-slate-950 border border-slate-800 group-hover:border-red-500/50 flex items-center justify-center text-red-500 text-3xl mb-6">
+
+            <i class="fa-solid fa-user-shield"></i>
+
+          </div>
+
+          <span
+            class="text-2xl font-black tracking-wide text-white group-hover:text-red-400 transition">
+
+            QUẢN LÍ
+
+          </span>
+
+          <span class="text-xs text-slate-500 mt-2">
+            Quản trị hệ thống
+          </span>
+
+        </button>
+
+
+
+        <!-- THU NGÂN -->
+
+        <button
+          onclick="location.href='/thungan'"
+          class="login-card bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-amber-500 rounded-2xl p-10 flex flex-col items-center justify-center group shadow-xl">
+
+          <div
+            class="w-20 h-20 rounded-full bg-slate-950 border border-slate-800 group-hover:border-amber-500/50 flex items-center justify-center text-amber-500 text-3xl mb-6">
+
+            <i class="fa-solid fa-cash-register"></i>
+
+          </div>
+
+          <span
+            class="text-2xl font-black tracking-wide text-white group-hover:text-amber-400 transition">
+
+            THU NGÂN
+
+          </span>
+
+          <span class="text-xs text-slate-500 mt-2">
+            Quầy thanh toán
+          </span>
+
+        </button>
+
+
+
+        <!-- NHÂN VIÊN -->
+
+        <button
+          onclick="switchView('view-staff-choice')"
+          class="login-card bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-sky-500 rounded-2xl p-10 flex flex-col items-center justify-center group shadow-xl">
+
+          <div
+            class="w-20 h-20 rounded-full bg-slate-950 border border-slate-800 group-hover:border-sky-500/50 flex items-center justify-center text-sky-400 text-3xl mb-6">
+
+            <i class="fa-solid fa-users-gear"></i>
+
+          </div>
+
+          <span
+            class="text-2xl font-black tracking-wide text-white group-hover:text-sky-400 transition">
+
+            PHỤC VỤ / BẾP
+
+          </span>
+
+          <span class="text-xs text-slate-500 mt-2">
+            Nhân viên phục vụ &amp; bếp
+          </span>
+
+        </button>
+
+
+      </div>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- 8. CHỌN NHÂN VIÊN -->
+    <!-- ========================================================= -->
+
+    <div id="view-staff-choice" class="hidden space-y-6">
+
+
+      <button
+        onclick="backToLogin()"
+        class="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-semibold">
+
+        <i class="fa-solid fa-arrow-left"></i>
+
+        Quay lại đăng nhập
+
+      </button>
+
+
+      <div class="text-center mb-6">
+
+        <h2 class="text-2xl font-bold text-white uppercase tracking-wider">
+          LỰA CHỌN BỘ PHẬN NHÂN VIÊN
+        </h2>
+
+      </div>
+
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+
+
+        <button
+          onclick="switchView('view-staff-list')"
+          class="bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500 rounded-2xl p-8 flex flex-col items-center group transition">
+
+          <i class="fa-solid fa-clipboard-user text-4xl text-amber-400 mb-4 group-hover:scale-110 transition"></i>
+
+          <span class="text-xl font-bold text-white">
+            NHÂN VIÊN PHỤC VỤ
+          </span>
+
+        </button>
+
+
+        <button
+          onclick="switchView('view-kitchen-stations')"
+          class="bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-rose-500 rounded-2xl p-8 flex flex-col items-center group transition">
+
+          <i class="fa-solid fa-fire-burner text-4xl text-rose-500 mb-4 group-hover:scale-110 transition"></i>
+
+          <span class="text-xl font-bold text-white">
+            NHÂN VIÊN BẾP
+          </span>
+
+        </button>
+
+
+      </div>
+
+    </div>
+
+
+
+    <!-- ========================================================= -->
+    <!-- 9. DANH SÁCH NHÂN VIÊN -->
+    <!-- ========================================================= -->
+
+    <div id="view-staff-list" class="hidden space-y-6">
+
+
+      <button
+        onclick="switchView('view-staff-choice')"
+        class="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-semibold">
+
+        <i class="fa-solid fa-arrow-left"></i>
+
+        Quay lại
+
+      </button>
+
+
+      <div class="text-center mb-6">
+
+        <h2 class="text-2xl font-bold text-white uppercase tracking-wider">
+          CHỌN TÀI KHOẢN NHÂN VIÊN
+        </h2>
+
+        <p class="text-slate-400 text-sm mt-1">
+          Chạm vào tên bạn để xác nhận mã PIN vào ca
+        </p>
+
+      </div>
+
+
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-6 max-w-4xl mx-auto">
+
+        {% for s in staffs %}
+
+        <div
+          onclick="openPinModal('{{ s.name }}', '{{ s.id }}')"
+          class="bg-slate-900 border border-slate-800 hover:border-amber-500 rounded-2xl p-3 md:p-6 flex flex-col items-center text-center cursor-pointer transition transform hover:-translate-y-1 shadow-lg">
+
+
+          <img
+            src="{{ s.avatar or '' }}"
+            onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Crect%20width%3D%2240%22%20height%3D%2240%22%20fill%3D%22%231e293b%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2215%22%20r%3D%227%22%20fill%3D%22%2364748b%22%2F%3E%3Cpath%20d%3D%22M6%2038c0-8%206-13%2014-13s14%205%2014%2013z%22%20fill%3D%22%2364748b%22%2F%3E%3C%2Fsvg%3E'"
+            class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover ring-2 ring-slate-700 mb-2 md:mb-3"
+            alt="Avatar">
+
+
+          <h3 class="font-bold text-white text-base md:text-lg">
+            {{ s.name }}
+          </h3>
+
+
+          <span class="text-xs text-amber-400 font-semibold mt-1">
+            MÃ: {{ s.id }}
+          </span>
+
+
+          <span class="text-xs text-slate-400 mt-0.5">
+            {{ s.role }}
+          </span>
+
+
+        </div>
+
+        {% endfor %}
+
+      </div>
+
+    </div>
+
+
+
+    <!-- ========================================================= -->
+    <!-- 10. TRẠM BẾP -->
+    <!-- ========================================================= -->
+
+    <div id="view-kitchen-stations" class="hidden space-y-6">
+
+
+      <button
+        onclick="switchView('view-staff-choice')"
+        class="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-semibold">
+
+        <i class="fa-solid fa-arrow-left"></i>
+
+        Quay lại
+
+      </button>
+
+
+      <div class="text-center mb-6">
+
+        <h2 class="text-2xl font-bold text-white uppercase tracking-wider">
+          CHỌN KHU VỰC / TRẠM BẾP
+        </h2>
+
+        <p class="text-slate-400 text-sm mt-1">
+          Chạm vào trạm trực để mở màn hình tiếp nhận món
+        </p>
+
+      </div>
+
+
+      <!-- 3 trạm đầu -->
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 max-w-4xl mx-auto">
+
+        {% for st in stations[:3] %}
+
+        <div
+          onclick="openPinModal('{{ st.name }}', '{{ st.id }}')"
+          class="bg-slate-900 border border-slate-800 hover:border-rose-500 rounded-2xl p-3 md:p-6 flex flex-col items-center text-center cursor-pointer transition transform hover:-translate-y-1 shadow-lg">
+
+
+          <i class="fa-solid {{ st.icon }} text-3xl text-rose-400 mb-3"></i>
+
+
+          <h3 class="font-bold text-white text-lg">
+            {{ st.name }}
+          </h3>
+
+
+          <p class="text-xs text-slate-400 text-center mt-1">
+            {{ st.desc }}
+          </p>
+
+
+          <span
+            class="mt-3 px-3 py-0.5 bg-slate-950 text-rose-300 rounded-full text-[11px] font-semibold border border-rose-500/30">
+
+            MÃ: {{ st.id }}
+
+          </span>
+
+
+        </div>
+
+        {% endfor %}
+
+      </div>
+
+
+      <!-- 2 trạm dưới -->
+
+      <div class="grid grid-cols-2 gap-3 md:gap-6 max-w-2xl mx-auto mt-4">
+
+        {% for st in stations[3:] %}
+
+        <div
+          onclick="openPinModal('{{ st.name }}', '{{ st.id }}')"
+          class="bg-slate-900 border border-slate-800 hover:border-rose-500 rounded-2xl p-3 md:p-6 flex flex-col items-center text-center cursor-pointer transition transform hover:-translate-y-1 shadow-lg">
+
+
+          <i class="fa-solid {{ st.icon }} text-3xl text-rose-400 mb-3"></i>
+
+
+          <h3 class="font-bold text-white text-lg">
+            {{ st.name }}
+          </h3>
+
+
+          <p class="text-xs text-slate-400 text-center mt-1">
+            {{ st.desc }}
+          </p>
+
+
+          <span
+            class="mt-3 px-3 py-0.5 bg-slate-950 text-rose-300 rounded-full text-[11px] font-semibold border border-rose-500/30">
+
+            MÃ: {{ st.id }}
+
+          </span>
+
+
+        </div>
+
+        {% endfor %}
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- FOOTER -->
+  <!-- ========================================================= -->
+
+  <footer
+    class="p-6 text-center text-xs text-slate-600 border-t border-slate-900">
+
+    Hệ Thống Quản Trị Nhà Hàng Gyu Sachi • POS System v2.5
+
+  </footer>
+
+
+
+  <!-- ========================================================= -->
+  <!-- POPUP NHẬP PIN -->
+  <!-- ========================================================= -->
+
+  <div
+    id="pinModal"
+    class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+
+
+    <div
+      class="bg-slate-900 border border-slate-800 w-full max-w-xs rounded-3xl p-6 text-center shadow-2xl">
+
+
+      <h3
+        id="pinModalTitle"
+        class="text-lg font-bold text-white mb-1">
+      </h3>
+
+
+      <p class="text-xs text-slate-400 mb-4">
+        Nhập mã PIN xác thực để vào ca
+      </p>
+
+
+      <input
+        id="pinInput"
+        type="password"
+        maxlength="4"
+        placeholder="••••"
+        class="w-full tracking-widest text-center text-2xl py-2.5 bg-slate-950 border border-slate-800 rounded-xl mb-4 text-amber-400 font-bold focus:outline-none">
+
+
+      <div class="flex gap-2">
+
+
+        <button
+          onclick="closePinModal()"
+          class="w-1/2 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-300 transition">
+
+          HỦY
+
+        </button>
+
+
+        <button
+          onclick="handleLoginSuccess()"
+          class="w-1/2 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition">
+
+          VÀO CA
+
+        </button>
+
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    // Các màn hình: 3 ô đăng nhập -> chọn phục vụ/bếp -> danh sách nhân viên / trạm bếp
+    function switchView(viewId) {
+      ['view-login', 'view-staff-choice', 'view-staff-list', 'view-kitchen-stations'].forEach(function (v) {
+        const el = document.getElementById(v);
+        if (el) el.classList.add('hidden');
+      });
+      const selected = document.getElementById(viewId);
+      if (selected) selected.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function backToLogin() { switchView('view-login'); }
+
+    // Các trang nội bộ (phục vụ, bếp, thu ngân, quản lí) quay về "/#staff-choice" để chọn lại bộ phận
+    function applyHash() {
+      if (location.hash === '#staff-choice') switchView('view-staff-choice');
+      else if (location.hash === '#staff-login') switchView('view-login');
+      if (location.hash) history.replaceState(null, '', '/');
+    }
+    window.addEventListener('DOMContentLoaded', applyHash);
+    window.addEventListener('hashchange', applyHash);
+
+    // =========================================================
+    // POPUP PIN
+    // =========================================================
+    let selectedStaffId = null;
+
+
+    function openPinModal(title, id) {
+
+      selectedStaffId = id;
+
+      document.getElementById('pinModalTitle').innerText = title;
+
+      document.getElementById('pinInput').value = '';
+
+      document.getElementById('pinModal').classList.remove('hidden');
+
+      setTimeout(function() {
+
+        document.getElementById('pinInput').focus();
+
+      }, 100);
+
+    }
+
+
+
+    function closePinModal() {
+
+      document.getElementById('pinModal').classList.add('hidden');
+
+    }
+
+
+
+    // =========================================================
+    // XÁC THỰC PIN
+    // =========================================================
+
+    async function handleLoginSuccess() {
+
+      const pin = document.getElementById('pinInput').value;
+
+
+      if (!pin) {
+
+        alert('Vui lòng nhập mã PIN!');
+
+        return;
+
+      }
+
+
+      try {
+
+        const response = await fetch('/api/verify-pin', {
+
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json'
+          },
+
+          body: JSON.stringify({
+            id: selectedStaffId,
+            pin: pin
+          })
+
+        });
+
+
+        const data = await response.json();
+
+        if (data.success) {
+
+          closePinModal();
+
+          if (data.redirect) {
+            window.location.href = data.redirect;
+          } else {
+            alert(data.message);
+          }
+
+        } else {
+
+          alert(data.message);
+
+        }
+
+
+      } catch (error) {
+
+        console.error(error);
+
+        alert('Không thể kết nối đến máy chủ!');
+
+      }
+
+    }
+
+  </script>
+
+</body>
+
+</html>

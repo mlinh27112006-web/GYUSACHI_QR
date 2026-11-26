@@ -1,0 +1,201 @@
+{# Người phụ trách: Hồng Ngọc
+   Mô tả: Tab Báo cáo doanh thu, chi tiết/huỷ/khôi phục hoá đơn, xuất Excel và in. #}
+      <!-- ===== 2. BÁO CÁO ===== -->
+      <section id="v-report" class="hidden space-y-6">
+        <div id="rpCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+        <div id="rpParts" class="grid grid-cols-2 lg:grid-cols-5 gap-3"></div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Doanh thu theo ngày</h3>
+          <div id="rpChart"></div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Hình thức thanh toán</h3>
+            <div id="rpMethod" class="space-y-3"></div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Theo gói buffet</h3>
+            <div id="rpPackage" class="space-y-3"></div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Buổi trưa / tối</h3>
+            <div id="rpShift" class="space-y-3"></div>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Hoá đơn đã thanh toán</h3>
+            <span id="rpInvCount" class="text-xs text-slate-500"></span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-800 text-slate-400 text-xs uppercase">
+                <tr><th class="text-left px-4 py-3">Mã</th><th class="text-left px-4 py-3">Giờ</th>
+                    <th class="text-left px-4 py-3">Bàn</th><th class="text-left px-4 py-3">Gói</th>
+                    <th class="text-right px-4 py-3">Khách</th><th class="text-left px-4 py-3">Thanh toán</th>
+                    <th class="text-right px-4 py-3">Giảm</th><th class="text-right px-4 py-3">Tổng</th></tr>
+              </thead>
+              <tbody id="rpInvoices"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="rpVoidBox" class="hidden bg-slate-900 border border-red-900/60 rounded-2xl overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+            <h3 class="text-xs font-bold text-red-300 uppercase tracking-widest">Hoá đơn đã huỷ (không tính vào doanh thu)</h3>
+            <span id="rpVoidCount" class="text-xs text-slate-500"></span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <tbody id="rpVoided"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+<!-- ================= CHI TIẾT HOÁ ĐƠN ================= -->
+
+<script>
+  // ============ 2. BÁO CÁO ============
+  async function loadReport() {
+    const r = await api('/api/manager/report' + qs());
+    if (!r.summary) return;
+    const s = r.summary;
+
+    document.getElementById('rpCards').innerHTML =
+      card('Doanh thu', money(s.revenue), 'Đã gồm VAT', 'text-amber-400') +
+      card('Số hoá đơn', s.bills) +
+      card('Số khách', s.guests) +
+      card('Trung bình / hoá đơn', money(s.avg));
+
+    const part = (l, v, c) => `<div class="bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3">
+      <p class="text-[10px] text-slate-400 uppercase tracking-widest">${l}</p>
+      <p class="text-sm font-black mt-0.5 ${c || ''}">${money(v)}</p></div>`;
+    document.getElementById('rpParts').innerHTML =
+      part('Buffet đồ ăn', s.food) + part('Buffet nước', s.drink) + part('Gọi lẻ / combo', s.extra) +
+      part('Giảm giá (đi 4 tính 3)', -s.discount, 'text-emerald-400') + part('VAT đã thu', s.vat);
+
+    document.getElementById('rpChart').innerHTML = dayChart(r.series);
+
+    const list = (rows, key) => barList(rows.map(x => ({
+      name: key ? key(x) : x.name, value: x.revenue,
+      text: money(x.revenue) + ` <span class="text-slate-500 font-medium">· ${x.bills} đơn</span>`
+    })));
+    document.getElementById('rpMethod').innerHTML  = list(r.by_method, x => METHOD_NAME[x.name] || x.name);
+    document.getElementById('rpPackage').innerHTML = list(r.by_package);
+    document.getElementById('rpShift').innerHTML   = list(r.by_shift);
+
+    document.getElementById('rpInvCount').textContent =
+      r.invoices.length + ' hoá đơn' + (r.invoices.length >= 300 ? ' (hiển thị 300 mới nhất)' : '');
+    document.getElementById('rpInvoices').innerHTML = r.invoices.map(i => `
+      <tr data-id="${i.id}" onclick="openInv(Number(this.dataset.id))" class="border-t border-slate-800 hover:bg-slate-800/60 cursor-pointer">
+        <td class="px-4 py-3 text-slate-400">#${i.id}</td>
+        <td class="px-4 py-3">${esc(i.paid_time)}</td>
+        <td class="px-4 py-3 font-bold">${esc(i.table_id)}</td>
+        <td class="px-4 py-3">${esc(i.package)}</td>
+        <td class="px-4 py-3 text-right">${i.guests}</td>
+        <td class="px-4 py-3">${esc(METHOD_NAME[i.payment_method] || '')}</td>
+        <td class="px-4 py-3 text-right text-emerald-400">${i.discount ? '−' + money(i.discount) : ''}</td>
+        <td class="px-4 py-3 text-right font-black text-amber-400">${money(i.total)}</td>
+      </tr>`).join('') ||
+      '<tr><td colspan="8" class="px-4 py-8 text-center text-slate-500">Không có hoá đơn trong khoảng này.</td></tr>';
+
+    const vd = r.voided || [];
+    document.getElementById('rpVoidBox').classList.toggle('hidden', !vd.length);
+    document.getElementById('rpVoidCount').textContent = vd.length + ' hoá đơn';
+    document.getElementById('rpVoided').innerHTML = vd.map(v => `
+      <tr data-id="${v.id}" onclick="openInv(Number(this.dataset.id))" class="border-t border-slate-800 hover:bg-slate-800/60 cursor-pointer">
+        <td class="px-4 py-3 text-slate-400">#${v.id}</td>
+        <td class="px-4 py-3 font-bold">${esc(v.table_id)}</td>
+        <td class="px-4 py-3 text-slate-400">${esc(v.paid_time)}</td>
+        <td class="px-4 py-3 text-red-300">${esc(v.void_reason || '')}</td>
+        <td class="px-4 py-3 text-right font-black text-slate-500 line-through">${money(v.total)}</td>
+      </tr>`).join('');
+    document.getElementById('printTitle').textContent =
+      'BÁO CÁO DOANH THU GYU SACHI · ' + r.from.split('-').reverse().join('/') + ' – ' + r.to.split('-').reverse().join('/');
+  }
+
+  async function openInv(id) {
+    const r = await api('/api/manager/invoice/' + id);
+    if (!r.success) { toast(r.message || 'Không mở được hoá đơn', false); return; }
+    const o = r.invoice;
+    const row = (a, b, c) => `<div class="flex justify-between gap-3 ${c || ''}"><span>${esc(a)}</span><span class="font-bold whitespace-nowrap">${b}</span></div>`;
+
+    let h = row('Bàn ' + o.table_id, o.guests + ' khách') +
+            row('Vào lúc', esc(o.opened_at)) + row('Thanh toán', esc(o.paid_at)) +
+            (o.payments || []).map(p => row('   ' + (METHOD_NAME[p.method] || p.method), money(p.amount), 'text-slate-400')).join('') +
+            '<hr class="border-slate-800 my-2">';
+    if (o.package_name) h += row(o.package_name + ' × ' + o.guests, money(o.food_amount));
+    if (o.drink_name)   h += row(o.drink_name + ' × ' + o.guests, money(o.drink_amount));
+    h += r.lines.map(l => row(l.name + ' × ' + l.qty, money(l.amount))).join('');
+    h += '<hr class="border-slate-800 my-2">';
+    if (o.discount) h += row('Giảm giá', '−' + money(o.discount), 'text-emerald-400');
+    h += row('VAT', money(o.vat_amount));
+    h += `<div class="flex justify-between items-end pt-3 border-t border-slate-700">
+            <span class="font-bold text-slate-300">TỔNG</span>
+            <span class="text-2xl font-black text-amber-400">${money(o.total)}</span></div>`;
+    if (o.promo_note) h += `<p class="text-xs text-slate-500 pt-2"><i class="fa-solid fa-gift mr-1"></i>${esc(o.promo_note)}</p>`;
+
+    if (o.paid_at) h += voidHtml(o);
+    curInv = o;
+    document.getElementById('invTitle').textContent = '#' + o.id + (o.voided ? ' · ĐÃ HUỶ' : '');
+    document.getElementById('invBody').innerHTML = h;
+    document.getElementById('invModal').classList.remove('hidden');
+  }
+  function closeInv() { document.getElementById('invModal').classList.add('hidden'); }
+
+  // ---- huỷ / khôi phục hoá đơn ----
+  let curInv = null;
+  function voidHtml(o) {
+    if (o.voided) return `
+      <div class="mt-3 p-3 rounded-xl bg-red-950/60 border border-red-800 text-xs">
+        <p class="font-black text-red-300 uppercase tracking-widest">Đã huỷ lúc ${esc(o.voided_time)}</p>
+        <p class="text-red-200 mt-1">Lí do: ${esc(o.void_reason || '')}</p>
+        <p class="text-slate-400 mt-1">Hoá đơn này không tính vào doanh thu.</p>
+      </div>
+      <button onclick="doRestore()" class="mt-3 w-full py-2.5 rounded-xl border border-emerald-700 text-emerald-300 font-bold text-sm hover:bg-emerald-700 hover:text-white transition">
+        KHÔI PHỤC HOÁ ĐƠN</button>`;
+    return `
+      <div class="pt-3 mt-3 border-t border-slate-800">
+        <button id="voidBtn" onclick="showVoid()" class="w-full py-2.5 rounded-xl border border-red-700 text-red-300 font-bold text-sm hover:bg-red-700 hover:text-white transition">
+          <i class="fa-solid fa-ban mr-2"></i>HUỶ HOÁ ĐƠN</button>
+        <div id="voidBox" class="hidden space-y-2 mt-2">
+          <input id="voidReason" maxlength="300" class="fld" placeholder="Lí do huỷ (VD: thu ngân bấm nhầm)"
+            onkeydown="if(event.key==='Enter') doVoid()">
+          <p id="voidErr" class="hidden text-sm text-red-400"></p>
+          <button onclick="doVoid()" class="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 font-black text-sm">XÁC NHẬN HUỶ</button>
+          <p class="text-[11px] text-slate-500">Hoá đơn không bị xoá, chỉ loại khỏi doanh thu. Có thể khôi phục lại sau.</p>
+        </div>
+      </div>`;
+  }
+  function showVoid() {
+    document.getElementById('voidBtn').classList.add('hidden');
+    document.getElementById('voidBox').classList.remove('hidden');
+    document.getElementById('voidReason').focus();
+  }
+  async function doVoid() {
+    const r = await api('/api/manager/invoice/' + curInv.id + '/void', { reason: document.getElementById('voidReason').value });
+    if (!r.success) { formErr('voidErr', r.message || 'Không huỷ được'); return; }
+    closeInv(); toast('Đã huỷ hoá đơn #' + curInv.id, true); refreshAfterInvoice();
+  }
+  async function doRestore() {
+    if (!confirm('Khôi phục hoá đơn #' + curInv.id + '? Hoá đơn sẽ được tính lại vào doanh thu.')) return;
+    const r = await api('/api/manager/invoice/' + curInv.id + '/restore', {});
+    if (!r.success) { toast(r.message || 'Không khôi phục được', false); return; }
+    closeInv(); toast('Đã khôi phục hoá đơn #' + curInv.id, true); refreshAfterInvoice();
+  }
+  function refreshAfterInvoice() {
+    if (tab === 'report') loadReport();
+    if (tab === 'overview') loadOverview();
+  }
+
+  // ---- xuất file / in ----
+  function exportCsv() {
+    const kind = tab === 'dishes' ? 'dishes' : 'invoices';
+    location.href = '/api/manager/export?kind=' + kind + '&from=' + range.from + '&to=' + range.to;
+  }
+  function printReport() { window.print(); }
+</script>

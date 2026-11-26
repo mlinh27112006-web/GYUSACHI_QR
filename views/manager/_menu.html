@@ -1,0 +1,330 @@
+{# Người phụ trách: Nguyên An
+   Mô tả: Tab Thực đơn: danh sách món, thêm món, sửa/xoá món (buffet, gọi lẻ, combo). #}
+      <!-- ===== 4. THỰC ĐƠN ===== -->
+      <section id="v-menu" class="hidden space-y-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex gap-2">
+            <button id="mtAla" onclick="setMenuTab('ala')" class="chip active px-4 py-2 rounded-xl border border-slate-700 bg-slate-900 text-sm font-bold">Gọi lẻ / Combo / Nước</button>
+            <button id="mtBuf" onclick="setMenuTab('buf')" class="chip px-4 py-2 rounded-xl border border-slate-700 bg-slate-900 text-sm font-bold">Món trong buffet</button>
+          </div>
+          <div class="relative flex-1 min-w-[12rem]">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+            <input id="mSearch" oninput="renderMenu()" placeholder="Tìm món..."
+              class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-red-500 outline-none text-sm">
+          </div>
+          <select id="mCat" onchange="renderMenu()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm"></select>
+          <label class="flex items-center gap-2 text-xs text-slate-400">
+            <input id="mOff" type="checkbox" onchange="renderMenu()"> Chỉ món đang tắt
+          </label>
+          <button onclick="openAdd()"
+            class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-sm font-black transition">
+            <i class="fa-solid fa-plus mr-2"></i>THÊM MÓN
+          </button>
+        </div>
+
+        <p id="mHint" class="text-xs text-slate-500"></p>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead id="mHead" class="bg-slate-800 text-slate-400 text-xs uppercase"></thead>
+              <tbody id="mBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <p id="mCount" class="text-xs text-slate-500"></p>
+      </section>
+
+<!-- ================= SỬA MÓN ================= -->
+
+<!-- ================= THÊM MÓN ================= -->
+
+<script>
+  // ============ 4. THỰC ĐƠN ============
+  async function loadMenu() {
+    const r = await api('/api/manager/menu');
+    if (!r.alacarte) return;
+    MENU = r;
+    setMenuTab(menuTab);
+  }
+
+  function setMenuTab(t) {
+    menuTab = t;
+    document.getElementById('mtAla').classList.toggle('active', t === 'ala');
+    document.getElementById('mtBuf').classList.toggle('active', t === 'buf');
+
+    const rows = t === 'ala' ? MENU.alacarte : MENU.buffet;
+    const order = MENU.category_order;
+    const cats = [...new Set(rows.map(x => x.category))].sort((a, b) => {
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    document.getElementById('mCat').innerHTML =
+      '<option value="">Tất cả nhóm</option>' + cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    document.getElementById('mSearch').value = '';
+    document.getElementById('mOff').checked = false;
+
+    document.getElementById('mHint').textContent = t === 'ala'
+      ? 'Đổi giá chỉ áp dụng cho món gọi từ lúc này, hoá đơn cũ giữ nguyên giá. Món tắt sẽ không hiện ở màn hình gọi món của phục vụ.'
+      : 'Món buffet không có giá riêng. Tắt món khi hết nguyên liệu, món sẽ biến mất khỏi mọi gói buffet.';
+    document.getElementById('mHead').innerHTML = t === 'ala'
+      ? '<tr><th class="text-left px-4 py-3">Món</th><th class="text-left px-4 py-3">Nhóm</th><th class="text-right px-4 py-3">Giá (đ)</th><th class="text-center px-4 py-3">Trạng thái</th><th class="text-right px-4 py-3">Thao tác</th></tr>'
+      : '<tr><th class="text-left px-4 py-3">Món</th><th class="text-left px-4 py-3">Nhóm</th><th class="text-left px-4 py-3">Từ gói</th><th class="text-center px-4 py-3">Trạng thái</th><th class="text-right px-4 py-3">Thao tác</th></tr>';
+    renderMenu();
+  }
+
+  function renderMenu() {
+    if (!MENU) return;
+    const ala = menuTab === 'ala';
+    const q = document.getElementById('mSearch').value.trim().toLowerCase();
+    const cat = document.getElementById('mCat').value;
+    const offOnly = document.getElementById('mOff').checked;
+
+    const rows = (ala ? MENU.alacarte : MENU.buffet).filter(x =>
+      (!q || x.name.toLowerCase().includes(q)) && (!cat || x.category === cat) && (!offOnly || !x.is_active));
+
+    document.getElementById('mBody').innerHTML = rows.map(x => `
+      <tr class="border-t border-slate-800 ${x.is_active ? '' : 'opacity-50'}">
+        <td class="px-4 py-2.5">
+          <span class="text-slate-100">${esc(x.name)}</span>
+          ${x.is_combo ? '<span class="ml-2 text-[10px] font-black text-amber-400 tracking-widest">COMBO</span>' : ''}
+        </td>
+        <td class="px-4 py-2.5 text-slate-400">${esc(x.category)}</td>
+        ${ala ? `
+        <td class="px-4 py-2.5 text-right whitespace-nowrap">
+          <input type="number" min="0" step="1000" value="${x.price}" data-id="${x.id}" data-orig="${x.price}"
+            oninput="priceEdited(this)"
+            class="w-28 bg-slate-950 border border-slate-700 focus:border-amber-500 outline-none rounded-lg px-2 py-1 text-right font-bold">
+          <button data-id="${x.id}" onclick="savePrice(this)" disabled
+            class="save-btn ml-1 px-2.5 py-1 rounded-lg bg-slate-800 text-slate-600 text-xs font-bold">Lưu</button>
+        </td>` : `
+        <td class="px-4 py-2.5 text-slate-400">${x.from_price ? Math.round(x.from_price / 1000) + 'K' : '—'}</td>`}
+        <td class="px-4 py-2.5 text-center">
+          <button data-id="${x.id}" onclick="toggleItem(Number(this.dataset.id))"
+            class="px-3 py-1 rounded-full text-xs font-bold ${x.is_active ? 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40' : 'bg-red-600/20 text-red-400 hover:bg-red-600/40'}">
+            ${x.is_active ? 'Đang bán' : 'Hết hàng'}
+          </button>
+        </td>
+        <td class="px-4 py-2.5 text-right whitespace-nowrap space-x-1">
+          ${btn('Sửa', B_GRAY, 'openDish', x.id)}${btn('Xoá', B_RED, 'delDish', x.id)}
+        </td>
+      </tr>`).join('') ||
+      '<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Không có món nào.</td></tr>';
+
+    document.getElementById('mCount').textContent = rows.length + ' món';
+  }
+
+  function priceEdited(inp) {
+    const btn = inp.parentElement.querySelector('.save-btn');
+    const changed = inp.value !== '' && inp.value !== inp.dataset.orig;
+    btn.disabled = !changed;
+    btn.className = 'save-btn ml-1 px-2.5 py-1 rounded-lg text-xs font-bold ' +
+      (changed ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'bg-slate-800 text-slate-600');
+  }
+
+  async function savePrice(btn) {
+    const id = Number(btn.dataset.id);
+    const inp = btn.parentElement.querySelector('input');
+    const r = await api('/api/manager/alacarte/' + id, { price: inp.value });
+    if (!r.success) { toast(r.message || 'Không lưu được', false); return; }
+    MENU.alacarte.find(x => x.id === id).price = Number(inp.value);
+    inp.dataset.orig = String(Number(inp.value));
+    priceEdited(inp);
+    toast('Đã lưu giá', true);
+  }
+
+  async function toggleItem(id) {
+    const list = menuTab === 'ala' ? MENU.alacarte : MENU.buffet;
+    const item = list.find(x => x.id === id);
+    const url = (menuTab === 'ala' ? '/api/manager/alacarte/' : '/api/manager/menu-item/') + id;
+    const r = await api(url, { is_active: !item.is_active });
+    if (!r.success) { toast(r.message || 'Không đổi được', false); return; }
+    item.is_active = !item.is_active;
+    toast(item.is_active ? 'Đã bán lại: ' + item.name : 'Đã tắt: ' + item.name, true);
+    renderMenu();
+  }
+
+
+  // ============ THÊM MÓN ============
+  let addPkgIds = new Set();
+  let addType = 'buf';          // 'buf' = buffet | 'ala' = gọi lẻ / nước
+
+  function openAdd() {
+    if (!MENU) return;
+    document.getElementById('addName').value = '';
+    document.getElementById('addPrice').value = '';
+    document.getElementById('addCatNew').value = '';
+    document.getElementById('addError').classList.add('hidden');
+
+    document.getElementById('addStation').innerHTML =
+      MENU.stations.map(st => `<option value="${esc(st.id)}">${esc(st.id)} · ${esc(st.name)}</option>`).join('');
+
+    addPkgIds = new Set();
+    setAddType(menuTab === 'ala' ? 'ala' : 'buf');   // mặc định theo tab đang xem
+    document.getElementById('addModal').classList.remove('hidden');
+    document.getElementById('addName').focus();
+  }
+
+  // Đổi loại món: Buffet -> hiện chọn gói buffet; Alacarte -> hiện ô giá
+  function setAddType(t) {
+    addType = t;
+    const ala = t === 'ala';
+    document.getElementById('addTitle').textContent = ala ? 'Thêm món gọi lẻ / nước' : 'Thêm món vào buffet';
+    document.getElementById('addTypeBuf').classList.toggle('active', !ala);
+    document.getElementById('addTypeAla').classList.toggle('active', ala);
+    document.getElementById('addPriceBox').classList.toggle('hidden', !ala);
+    document.getElementById('addPkgBox').classList.toggle('hidden', ala);
+
+    // nhóm: các nhóm đang có của loại này + "Nhóm mới"
+    const order = MENU.category_order;
+    const cats = [...new Set((ala ? MENU.alacarte : MENU.buffet).map(x => x.category))].sort((a, b) => {
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    document.getElementById('addCat').innerHTML =
+      cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('') +
+      '<option value="__new__">+ Nhóm mới...</option>';
+    onAddCat();
+    renderAddPkgs();
+  }
+
+  function closeAdd() { document.getElementById('addModal').classList.add('hidden'); }
+
+  function onAddCat() {
+    const isNew = document.getElementById('addCat').value === '__new__';
+    document.getElementById('addCatNew').classList.toggle('hidden', !isNew);
+  }
+
+  function isFoodPkg(p) { return p.price >= 150000; }
+
+  function renderAddPkgs() {
+    document.getElementById('addPkgs').innerHTML = MENU.packages.map(p => {
+      const on = addPkgIds.has(p.id);
+      const label = Math.round(p.price / 1000) + 'K' + (isFoodPkg(p) ? '' : ' · nước');
+      return `<button data-id="${p.id}" onclick="togglePkg(Number(this.dataset.id))"
+        class="chip ${on ? 'active' : ''} px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-xs font-bold hover:border-red-500 transition">
+        ${on ? '<i class="fa-solid fa-check mr-1"></i>' : ''}${label}</button>`;
+    }).join('');
+  }
+
+  function togglePkg(id) {
+    const p = MENU.packages.find(x => x.id === id);
+    if (addPkgIds.has(id)) {
+      // bỏ tick: bỏ luôn các gói đồ ăn THẤP hơn (vì gói thấp mà thiếu món thì gói cao cũng phải thiếu)
+      addPkgIds.delete(id);
+      if (isFoodPkg(p)) MENU.packages.filter(x => isFoodPkg(x) && x.price < p.price).forEach(x => addPkgIds.delete(x.id));
+    } else {
+      addPkgIds.add(id);
+      // tick gói đồ ăn: tự tick các gói đồ ăn cao hơn
+      if (isFoodPkg(p)) MENU.packages.filter(x => isFoodPkg(x) && x.price > p.price).forEach(x => addPkgIds.add(x.id));
+    }
+    renderAddPkgs();
+  }
+
+  async function submitAdd() {
+    const ala = addType === 'ala';
+    const err = document.getElementById('addError');
+    err.classList.add('hidden');
+
+    let category = document.getElementById('addCat').value;
+    if (category === '__new__') category = document.getElementById('addCatNew').value;
+
+    const body = { name: document.getElementById('addName').value, category: category };
+    let url;
+    if (ala) {
+      url = '/api/manager/alacarte/new';
+      body.station_code = document.getElementById('addStation').value;
+      body.price = document.getElementById('addPrice').value;
+    } else {
+      url = '/api/manager/menu-item/new';
+      body.station_id = document.getElementById('addStation').value;
+      body.package_ids = [...addPkgIds];
+    }
+
+    const r = await api(url, body);
+    if (!r.success) {
+      err.textContent = r.message || 'Không thêm được món';
+      err.classList.remove('hidden');
+      return;
+    }
+
+    closeAdd();
+    toast('Đã thêm món: ' + body.name.trim(), true);
+    menuTab = addType;          // chuyển sang tab của loại vừa thêm để thấy món
+    await loadMenu();
+    document.getElementById('mSearch').value = body.name.trim();
+    renderMenu();
+  }
+</script>
+<script>
+  // ============ SỬA / XOÁ MÓN ============
+  let editDish = null;
+
+  function dishCats(ala) {
+    const order = MENU.category_order;
+    return [...new Set((ala ? MENU.alacarte : MENU.buffet).map(x => x.category).filter(Boolean))].sort((a, b) => {
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+  }
+
+  function openDish(id) {
+    const ala = menuTab === 'ala';
+    const item = (ala ? MENU.alacarte : MENU.buffet).find(x => x.id === Number(id));
+    if (!item) return;
+    editDish = { ala: ala, item: item };
+    document.getElementById('dmTitle').textContent = (ala ? 'Sửa món gọi lẻ' : 'Sửa món buffet');
+    document.getElementById('dmName').value = item.name;
+    document.getElementById('dmCat').innerHTML =
+      dishCats(ala).map(c => `<option value="${esc(c)}" ${c === item.category ? 'selected' : ''}>${esc(c)}</option>`).join('') +
+      '<option value="__new__">+ Nhóm mới...</option>';
+    document.getElementById('dmCatNew').value = '';
+    onDmCat();
+    const st = document.getElementById('dmStation');
+    st.innerHTML = MENU.stations.map(s => `<option value="${esc(s.id)}" ${s.id === item.station ? 'selected' : ''}>${esc(s.id)} · ${esc(s.name)}</option>`).join('');
+    const combo = ala && item.is_combo;
+    st.disabled = combo;
+    document.getElementById('dmComboNote').classList.toggle('hidden', !combo);
+    formErr('dmErr', '');
+    showM('dishModal');
+    document.getElementById('dmName').focus();
+  }
+
+  function onDmCat() {
+    document.getElementById('dmCatNew').classList.toggle('hidden', document.getElementById('dmCat').value !== '__new__');
+  }
+
+  async function reloadMenuKeepSearch() {
+    const q = document.getElementById('mSearch').value;
+    await loadMenu();
+    document.getElementById('mSearch').value = q;
+    renderMenu();
+  }
+
+  async function saveDish() {
+    const d = editDish; if (!d) return;
+    let cat = document.getElementById('dmCat').value;
+    if (cat === '__new__') cat = document.getElementById('dmCatNew').value;
+    const body = { name: document.getElementById('dmName').value };
+    if ((cat || '') !== (d.item.category || '')) body.category = cat;          // chỉ gửi khi có đổi
+    const st = document.getElementById('dmStation');
+    if (!st.disabled && st.value !== d.item.station) body[d.ala ? 'station_code' : 'station_id'] = st.value;
+
+    const r = await api((d.ala ? '/api/manager/alacarte/' : '/api/manager/menu-item/') + d.item.id, body);
+    if (!r.success) { formErr('dmErr', r.message || 'Không lưu được'); return; }
+    hideM('dishModal');
+    toast('Đã lưu món', true);
+    reloadMenuKeepSearch();
+  }
+
+  async function delDish(id) {
+    const ala = menuTab === 'ala';
+    const item = (ala ? MENU.alacarte : MENU.buffet).find(x => x.id === Number(id));
+    if (!item) return;
+    if (!confirm('Xoá hẳn món “' + item.name + '”?\nChỉ xoá được món chưa từng được gọi. Món đã bán thì hãy bấm TẮT.')) return;
+    const r = await api((ala ? '/api/manager/alacarte/' : '/api/manager/menu-item/') + item.id + '/delete', {});
+    if (!r.success) { toast(r.message || 'Không xoá được', false); return; }
+    toast('Đã xoá món: ' + item.name, true);
+    reloadMenuKeepSearch();
+  }
+</script>
