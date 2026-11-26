@@ -1,0 +1,145 @@
+{# Người phụ trách: Mai Linh
+   Mô tả: Tab Cấu hình: VAT, giờ trưa, đi 4 tính 3, ngày lễ, tài khoản nhận chuyển khoản. #}
+      <section id="v-settings" class="hidden max-w-2xl space-y-5">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-sm font-black uppercase tracking-widest text-slate-300">Thuế &amp; giờ bán</h3>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div><label class="lbl">VAT (%)</label>
+              <input id="cfVat" type="number" min="0" max="30" step="0.5" class="fld" oninput="cfgExample()"></div>
+            <div><label class="lbl">Buổi trưa kết thúc lúc (giờ)</label>
+              <input id="cfLunch" type="number" min="10" max="20" step="1" class="fld" oninput="cfgExample()"></div>
+          </div>
+          <p class="text-[11px] text-slate-500">Bàn mở trước giờ này tính là buổi trưa, từ giờ này trở đi là buổi tối.</p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-sm font-black uppercase tracking-widest text-slate-300">Ưu đãi theo nhóm (đi N tính N−1)</h3>
+          <div><label class="lbl">Số người trong nhóm (N)</label>
+            <input id="cfGroup" type="number" min="2" max="20" step="1" class="fld sm:w-40" oninput="cfgExample()"></div>
+          <div><label class="lbl">Buổi tối áp dụng vào các ngày</label>
+            <div id="cfDays" class="flex flex-wrap gap-2"></div>
+            <p class="text-[11px] text-slate-500 mt-1">Buổi trưa luôn áp dụng mọi ngày (trừ ngày lễ).</p></div>
+          <div><label class="lbl">Ngày lễ không áp dụng ưu đãi</label>
+            <textarea id="cfHol" rows="6" class="fld font-mono" placeholder="02/09&#10;30/04&#10;06/02/2027"></textarea>
+            <p class="text-[11px] text-slate-500 mt-1">Mỗi ngày một dòng. <b class="text-slate-300">dd/mm</b> = lặp lại mỗi năm (VD 02/09),
+              <b class="text-slate-300">dd/mm/yyyy</b> = chỉ riêng năm đó (VD 06/02/2027 cho Tết).</p></div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-sm font-black uppercase tracking-widest text-slate-300">Tài khoản nhận chuyển khoản (mã QR ở thu ngân)</h3>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div><label class="lbl">Ngân hàng</label>
+              <select id="pyBank" class="fld"><option value="">— Chọn ngân hàng —</option>
+                <option value="VCB">Vietcombank</option><option value="TCB">Techcombank</option><option value="MB">MB Bank</option>
+                <option value="ACB">ACB</option><option value="BIDV">BIDV</option><option value="ICB">VietinBank</option>
+                <option value="VBA">Agribank</option><option value="TPB">TPBank</option><option value="VPB">VPBank</option>
+                <option value="STB">Sacombank</option><option value="SHB">SHB</option><option value="OCB">OCB</option>
+                <option value="MSB">MSB</option><option value="HDB">HDBank</option><option value="VIB">VIB</option>
+                <option value="SCB">SCB</option><option value="EIB">Eximbank</option><option value="LPB">LPBank</option></select></div>
+            <div><label class="lbl">Số tài khoản</label><input id="pyAcc" inputmode="numeric" class="fld" placeholder="0123456789"></div>
+          </div>
+          <div><label class="lbl">Tên chủ tài khoản (không dấu)</label><input id="pyHolder" class="fld uppercase" placeholder="NGUYEN VAN A"></div>
+          <p id="pyErr" class="hidden text-sm text-red-400"></p>
+          <button onclick="savePayment()" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 font-bold text-sm">LƯU TÀI KHOẢN</button>
+          <p class="text-[11px] text-slate-500">Thu ngân chọn "Chuyển khoản" sẽ thấy mã VietQR có sẵn số tiền và nội dung. Hệ thống không tự biết tiền đã về, thu ngân phải kiểm tra tin nhắn ngân hàng.</p>
+        </div>
+
+        <p id="cfExample" class="text-sm text-amber-300 bg-amber-950/30 border border-amber-900/50 rounded-xl px-4 py-3"></p>
+        <p id="cfErr" class="hidden text-sm text-red-400"></p>
+        <div class="flex gap-3">
+          <button onclick="resetSettings()" class="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 font-bold text-sm">KHÔI PHỤC MẶC ĐỊNH</button>
+          <button onclick="saveSettings()" class="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 font-bold text-sm">LƯU CẤU HÌNH</button>
+        </div>
+        <p class="text-xs text-slate-500">Đổi cấu hình có hiệu lực ngay cho các hoá đơn tính từ lúc này. Hoá đơn đã thanh toán giữ nguyên số tiền cũ.
+          Dòng chữ "Đi 4 tính 3" ở trang khách (index.html) là chữ cố định, bạn nhớ sửa tay nếu đổi quy tắc.</p>
+      </section>
+
+<script>
+  // ============ CẤU HÌNH ============
+  let cfgDays = new Set();
+  const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+  function holToText(h) {                          // MM-DD -> dd/mm ; YYYY-MM-DD -> dd/mm/yyyy
+    let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(h);
+    if (m) return m[3] + '/' + m[2] + '/' + m[1];
+    m = /^(\d{2})-(\d{2})$/.exec(h);
+    return m ? m[2] + '/' + m[1] : h;
+  }
+  function holFromText(t) {                        // dd/mm -> MM-DD ; dd/mm/yyyy -> YYYY-MM-DD
+    t = t.trim();
+    let m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t);
+    if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    m = /^(\d{1,2})\/(\d{1,2})$/.exec(t);
+    if (m) return m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    return t;                                      // sai định dạng -> để máy chủ báo lỗi
+  }
+
+  function fillSettings(c) {
+    document.getElementById('cfVat').value = c.vat_percent;
+    document.getElementById('cfLunch').value = c.lunch_end_hour;
+    document.getElementById('cfGroup').value = c.group_size;
+    document.getElementById('cfHol').value = c.holidays.map(holToText).join('\n');
+    cfgDays = new Set(c.dinner_days);
+    renderCfgDays();
+    cfgExample();
+  }
+  async function loadPayment() {
+    const p = await api('/api/manager/payment');
+    document.getElementById('pyBank').value = p.bank_id || '';
+    document.getElementById('pyAcc').value = p.account || '';
+    document.getElementById('pyHolder').value = p.holder || '';
+  }
+  async function savePayment() {
+    const r = await api('/api/manager/payment', {
+      bank_id: document.getElementById('pyBank').value,
+      account: document.getElementById('pyAcc').value,
+      holder: document.getElementById('pyHolder').value });
+    if (!r.success) { formErr('pyErr', r.message || 'Không lưu được'); return; }
+    formErr('pyErr', ''); toast('Đã lưu tài khoản nhận chuyển khoản', true);
+  }
+  async function loadSettings() {
+    loadPayment();
+    const r = await api('/api/manager/settings');
+    if (!r.settings) return;
+    formErr('cfErr', '');
+    fillSettings(r.settings);
+  }
+  function renderCfgDays() {
+    document.getElementById('cfDays').innerHTML = DAY_NAMES.map((n, i) => `
+      <button type="button" data-d="${i}" onclick="toggleCfgDay(Number(this.dataset.d))"
+        class="chip ${cfgDays.has(i) ? 'active' : ''} px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-xs font-bold hover:border-red-500 transition">${n}</button>`).join('');
+  }
+  function toggleCfgDay(i) {
+    if (cfgDays.has(i)) cfgDays.delete(i); else cfgDays.add(i);
+    renderCfgDays();
+  }
+  function cfgExample() {
+    const g = Number(document.getElementById('cfGroup').value) || 4;
+    const h = document.getElementById('cfLunch').value || 15;
+    const v = document.getElementById('cfVat').value || 0;
+    document.getElementById('cfExample').innerHTML =
+      `<i class="fa-solid fa-lightbulb mr-2"></i>Nhóm ${g} khách được miễn 1 suất buffet · bàn mở trước ${h}:00 là buổi trưa · VAT ${v}% tính sau khi trừ ưu đãi.`;
+  }
+  async function saveSettings() {
+    const body = {
+      vat_percent: document.getElementById('cfVat').value,
+      lunch_end_hour: document.getElementById('cfLunch').value,
+      group_size: document.getElementById('cfGroup').value,
+      dinner_days: [...cfgDays],
+      holidays: document.getElementById('cfHol').value.split(/[\n,;]+/).map(x => x.trim()).filter(Boolean).map(holFromText)
+    };
+    const r = await api('/api/manager/settings', body);
+    if (!r.success) { formErr('cfErr', r.message || 'Không lưu được'); return; }
+    formErr('cfErr', '');
+    fillSettings(r.settings);
+    toast('Đã lưu cấu hình', true);
+  }
+  async function resetSettings() {
+    if (!confirm('Khôi phục VAT, giờ trưa, ưu đãi nhóm và ngày lễ về mặc định?')) return;
+    const r = await api('/api/manager/settings', { reset: true });
+    if (!r.success) { formErr('cfErr', r.message || 'Không khôi phục được'); return; }
+    formErr('cfErr', '');
+    fillSettings(r.settings);
+    toast('Đã khôi phục mặc định', true);
+  }
+</script>

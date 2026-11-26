@@ -1,0 +1,46 @@
+{# Người phụ trách: Nguyên An
+   Mô tả: Mục Sổ kho: lịch sử nhập xuất kho phục vụ. #}
+      <!-- ===== KHO: bếp / phục vụ (dùng chung 1 khối) ===== -->
+      <section id="v-moves" class="hidden space-y-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="relative flex-1 min-w-[12rem]">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+            <input id="mvSearch" oninput="clearTimeout(mvTimer); mvTimer = setTimeout(loadMoves, 300)" placeholder="Tìm theo mặt hàng, ghi chú, món..."
+              class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-red-500 outline-none text-sm">
+          </div>
+          <button onclick="loadMoves()" class="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-sm font-bold hover:bg-slate-800 transition">
+            <i class="fa-solid fa-rotate mr-2"></i>Làm mới</button>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-800 text-slate-400 text-xs uppercase">
+                <tr><th class="text-left px-4 py-3">Thời gian</th>
+                    <th class="text-left px-4 py-3">Mặt hàng</th><th class="text-left px-4 py-3">Loại</th>
+                    <th class="text-right px-4 py-3">Số lượng</th>
+                    <th class="text-left px-4 py-3">Ghi chú</th></tr>
+              </thead>
+              <tbody id="mvBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <p id="mvCount" class="text-xs text-slate-500"></p>
+      </section>
+
+<script>
+  // ----- Sổ kho phục vụ -----
+  async function loadMoves() {
+    const r = await api('/api/manager/inventory/moves?q=' + encodeURIComponent(document.getElementById('mvSearch').value.trim()));
+    if (!r.moves) return;
+    const col = { IN: 'text-emerald-300', ADJUST: 'text-sky-300', AUTO: 'text-sky-300' };
+    document.getElementById('mvBody').innerHTML = r.moves.map(m => `
+      <tr class="border-t border-slate-800 align-top">
+        <td class="px-4 py-2.5 text-slate-400 whitespace-nowrap">${esc(m.at)}</td>
+        <td class="px-4 py-2.5 font-bold text-white">${esc(m.name)}</td>
+        <td class="px-4 py-2.5 font-bold ${col[m.kind] || ''}">${esc(m.label)}</td>
+        <td class="px-4 py-2.5 text-right font-bold ${m.qty < 0 ? 'text-red-300' : 'text-emerald-300'} whitespace-nowrap">${m.qty > 0 ? '+' : ''}${fq(m.qty)} ${esc(m.unit)}</td>
+        <td class="px-4 py-2.5 text-slate-400">${esc(m.note || '')}</td>
+      </tr>`).join('') || '<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Chưa có phiếu kho nào.</td></tr>';
+    document.getElementById('mvCount').textContent = r.moves.length + ' dòng gần nhất' + (r.moves.length >= 200 ? ' (hiển thị 200 mới nhất, dùng ô tìm kiếm để lọc)' : '');
+  }
+</script>

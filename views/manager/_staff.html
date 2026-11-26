@@ -1,0 +1,160 @@
+{# Người phụ trách: Mai Linh
+   Mô tả: Tab Nhân viên: thêm/sửa, đổi PIN nhân viên và trạm bếp. #}
+      <!-- ===== 5. NHÂN VIÊN ===== -->
+      <section id="v-staff" class="hidden space-y-5">
+        <div class="flex flex-wrap items-center gap-3">
+          <h3 class="text-sm font-black uppercase tracking-widest text-slate-300">Nhân viên phục vụ</h3>
+          <div class="flex-1"></div>
+          <button onclick="openStaff()" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-sm font-black transition">
+            <i class="fa-solid fa-user-plus mr-2"></i>THÊM NHÂN VIÊN</button>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-800 text-slate-400 text-xs uppercase">
+                <tr><th class="text-left px-4 py-3">Mã</th><th class="text-left px-4 py-3">Nhân viên</th>
+                    <th class="text-left px-4 py-3">Chức vụ</th><th class="text-right px-4 py-3">Số đơn</th>
+                    <th class="text-center px-4 py-3">Trạng thái</th><th class="text-right px-4 py-3">Thao tác</th></tr>
+              </thead>
+              <tbody id="stBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500">Nhân viên đã có lịch sử phục vụ không xoá được, hãy bấm KHOÁ: họ sẽ biến mất khỏi màn hình đăng nhập nhưng hoá đơn cũ vẫn giữ nguyên.</p>
+
+        <div class="grid lg:grid-cols-2 gap-5">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Tài khoản bếp (theo trạm)</h3>
+            <div id="stStations" class="space-y-2"></div>
+          </div>
+        </div>
+      </section>
+
+<!-- ================= NHÂN VIÊN ================= -->
+
+<div id="pinModal" class="hidden fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onclick="if(event.target===this) hideM('pinModal')">
+  <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xs p-6 text-center">
+    <h4 id="pinTitle" class="text-lg font-black text-white"></h4>
+    <p class="text-xs text-slate-400 mt-1">Nhập mã PIN mới gồm 4 chữ số</p>
+    <input id="pinNew" maxlength="4" inputmode="numeric" autocomplete="off"
+      onkeydown="if(event.key==='Enter') savePin()"
+      class="fld mt-4 text-center text-2xl tracking-[.4em]">
+    <p id="pinErr" class="hidden text-sm text-red-400 mt-2"></p>
+    <div class="flex gap-3 mt-4">
+      <button onclick="hideM('pinModal')" class="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 font-bold text-sm">HUỶ</button>
+      <button onclick="savePin()" class="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 font-bold text-sm">ĐỔI PIN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ============ 5. NHÂN VIÊN ============
+  let STAFF = null, editStaffId = null, pinTarget = null;
+
+  async function loadStaff() {
+    const r = await api('/api/manager/staff');
+    if (!r.staffs) return;
+    STAFF = r;
+    renderStaff();
+  }
+
+  function renderStaff() {
+    document.getElementById('stBody').innerHTML = STAFF.staffs.map(s => `
+      <tr class="border-t border-slate-800 ${s.is_active ? '' : 'opacity-50'}">
+        <td class="px-4 py-3 text-slate-400">${esc(s.id)}</td>
+        <td class="px-4 py-3"><div class="flex items-center gap-3">
+          <img src="${esc(s.avatar || '')}" alt="" class="w-9 h-9 rounded-full object-cover bg-slate-800"
+               onerror="this.onerror=null;this.src=AVATAR_FALLBACK">
+          <span class="font-bold text-white">${esc(s.name)}</span></div></td>
+        <td class="px-4 py-3 text-slate-300">${esc(s.role)}</td>
+        <td class="px-4 py-3 text-right text-slate-400">${s.orders}</td>
+        <td class="px-4 py-3 text-center">${s.busy ? badge('Đang phục vụ bàn', 'bg-amber-950 text-amber-300')
+            : s.is_active ? badge('Đang làm', 'bg-emerald-950 text-emerald-300') : badge('Đã khoá', 'bg-slate-800 text-slate-400')}</td>
+        <td class="px-4 py-3"><div class="flex flex-wrap justify-end gap-1.5">
+          ${btn('Sửa', B_GRAY, 'openStaff', s.id)}
+          ${btn('Đổi PIN', B_GRAY, 'pinStaff', s.id)}
+          ${btn(s.is_active ? 'Khoá' : 'Mở khoá', s.is_active ? B_AMBER : B_GREEN, 'toggleStaff', s.id)}
+          ${s.orders === 0 ? btn('Xoá', B_RED, 'delStaff', s.id) : ''}
+        </div></td>
+      </tr>`).join('') || '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Chưa có nhân viên.</td></tr>';
+
+    document.getElementById('stStations').innerHTML = STAFF.stations.map(s => `
+      <div class="flex items-center justify-between gap-3 text-sm">
+        <div class="min-w-0"><span class="font-bold text-white">${esc(s.id)}</span>
+          <span class="text-slate-300"> · ${esc(s.name)}</span></div>
+        ${btn('Đổi PIN', B_GRAY, 'pinStation', s.id)}
+      </div>`).join('');
+  }
+
+  function openStaff(id) {
+    const s = id ? STAFF.staffs.find(x => x.id === id) : null;
+    editStaffId = s ? s.id : null;
+    document.getElementById('staffTitle').textContent = s ? 'Sửa nhân viên ' + s.id : 'Thêm nhân viên';
+    document.getElementById('stName').value = s ? s.name : '';
+    document.getElementById('stRole').value = s ? s.role : 'Phục vụ';
+    document.getElementById('stAvatar').value = s ? (s.avatar || '') : '';
+    document.getElementById('stPin').value = '';
+    document.getElementById('stPinBox').classList.toggle('hidden', !!s);
+    formErr('stErr');
+    showM('staffModal');
+    document.getElementById('stName').focus();
+  }
+
+  async function saveStaff() {
+    const body = { name: document.getElementById('stName').value, role: document.getElementById('stRole').value,
+                   avatar: document.getElementById('stAvatar').value };
+    let url = '/api/manager/staff/new';
+    if (editStaffId) url = '/api/manager/staff/' + encodeURIComponent(editStaffId);
+    else body.pin = document.getElementById('stPin').value;
+    const r = await api(url, body);
+    if (!r.success) { formErr('stErr', r.message || 'Không lưu được'); return; }
+    hideM('staffModal');
+    toast(editStaffId ? 'Đã cập nhật nhân viên' : 'Đã thêm nhân viên (mã ' + r.id + ')', true);
+    loadStaff();
+  }
+
+  function pinStaff(id) {
+    const s = STAFF.staffs.find(x => x.id === id);
+    pinTarget = { kind: 'staff', id: id };
+    openPinBox('Đổi PIN: ' + s.name);
+  }
+  function pinStation(id) {
+    const s = STAFF.stations.find(x => x.id === id);
+    pinTarget = { kind: 'station', id: id };
+    openPinBox('Đổi PIN: ' + s.name);
+  }
+  function openPinBox(title) {
+    document.getElementById('pinTitle').textContent = title;
+    document.getElementById('pinNew').value = '';
+    formErr('pinErr');
+    showM('pinModal');
+    document.getElementById('pinNew').focus();
+  }
+  async function savePin() {
+    const pin = document.getElementById('pinNew').value;
+    const url = pinTarget.kind === 'staff'
+      ? '/api/manager/staff/' + encodeURIComponent(pinTarget.id)
+      : '/api/manager/station/' + encodeURIComponent(pinTarget.id) + '/pin';
+    const r = await api(url, { pin: pin });
+    if (!r.success) { formErr('pinErr', r.message || 'Không đổi được PIN'); return; }
+    hideM('pinModal');
+    toast('Đã đổi PIN', true);
+  }
+
+  async function toggleStaff(id) {
+    const s = STAFF.staffs.find(x => x.id === id);
+    if (s.is_active && !confirm('Khoá tài khoản ' + s.name + '? Nhân viên sẽ không đăng nhập được nữa.')) return;
+    const r = await api('/api/manager/staff/' + encodeURIComponent(id), { is_active: !s.is_active });
+    if (!r.success) { toast(r.message || 'Không đổi được', false); return; }
+    toast(s.is_active ? 'Đã khoá ' + s.name : 'Đã mở khoá ' + s.name, true);
+    loadStaff();
+  }
+  async function delStaff(id) {
+    const s = STAFF.staffs.find(x => x.id === id);
+    if (!confirm('Xoá hẳn nhân viên ' + s.name + '?')) return;
+    const r = await api('/api/manager/staff/' + encodeURIComponent(id) + '/delete', {});
+    if (!r.success) { toast(r.message || 'Không xoá được', false); return; }
+    toast('Đã xoá ' + s.name, true);
+    loadStaff();
+  }
+</script>

@@ -1,0 +1,46 @@
+{# Người phụ trách: Mai Linh
+   Mô tả: Tab Nhật ký thao tác của quản lí. #}
+      <!-- ===== 10. NHẬT KÝ ===== -->
+      <section id="v-audit" class="hidden space-y-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="relative flex-1 min-w-[12rem]">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+            <input id="auSearch" oninput="clearTimeout(auTimer); auTimer = setTimeout(loadAudit, 300)" placeholder="Tìm theo thao tác, món, hoá đơn..."
+              class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-red-500 outline-none text-sm">
+          </div>
+          <button onclick="loadAudit()" class="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-sm font-bold hover:bg-slate-800 transition">
+            <i class="fa-solid fa-rotate mr-2"></i>Làm mới</button>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-800 text-slate-400 text-xs uppercase">
+                <tr><th class="text-left px-4 py-3">Thời gian</th><th class="text-left px-4 py-3">Thao tác</th>
+                    <th class="text-left px-4 py-3">Đối tượng</th><th class="text-left px-4 py-3">Chi tiết</th></tr>
+              </thead>
+              <tbody id="auBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <p id="auCount" class="text-xs text-slate-500"></p>
+      </section>
+
+<script>
+  // ============ NHẬT KÝ ============
+  let auTimer = null;
+  async function loadAudit() {
+    const q = document.getElementById('auSearch').value.trim();
+    const r = await api('/api/manager/audit?q=' + encodeURIComponent(q));
+    if (!r.logs) return;
+    document.getElementById('auBody').innerHTML = r.logs.map(l => `
+      <tr class="border-t border-slate-800 align-top">
+        <td class="px-4 py-2.5 text-slate-400 whitespace-nowrap">${esc(l.at)}</td>
+        <td class="px-4 py-2.5 font-bold ${/Huỷ|Xoá/.test(l.action) ? 'text-red-300' : 'text-slate-100'}">${esc(l.action)}</td>
+        <td class="px-4 py-2.5">${esc(l.target)}</td>
+        <td class="px-4 py-2.5 text-slate-400">${esc(l.detail)}</td>
+      </tr>`).join('') ||
+      '<tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">Chưa có thao tác nào được ghi.</td></tr>';
+    document.getElementById('auCount').textContent =
+      r.logs.length + ' thao tác gần nhất' + (r.logs.length >= 200 ? ' (hiển thị 200 mới nhất, dùng ô tìm kiếm để lọc)' : '');
+  }
+</script>

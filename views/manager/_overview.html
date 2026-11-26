@@ -1,0 +1,36 @@
+{# Người phụ trách: Hồng Ngọc
+   Mô tả: Tab Tổng quan: thẻ doanh thu hôm nay và biểu đồ. #}
+      <!-- ===== 1. TỔNG QUAN ===== -->
+      <section id="v-overview" class="space-y-6">
+        <div id="ovCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+        <div class="grid lg:grid-cols-3 gap-4">
+          <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Doanh thu 14 ngày gần nhất</h3>
+            <div id="ovChart"></div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Món gọi nhiều hôm nay</h3>
+            <div id="ovTop" class="space-y-2 text-sm"></div>
+          </div>
+        </div>
+      </section>
+
+<script>
+  // ============ 1. TỔNG QUAN ============
+  async function loadOverview() {
+    const r = await api('/api/manager/overview');
+    if (!r.today) return;
+
+    document.getElementById('ovCards').innerHTML =
+      card('Hôm nay', money(r.today.revenue), r.today.bills + ' hoá đơn · ' + r.today.guests + ' khách', 'text-amber-400') +
+      (r.week ? card('Tuần này', money(r.week.revenue), r.week.bills + ' hoá đơn · TB ' + short(r.week.avg) + '/hoá đơn') : '') +
+      (r.month ? card('Tháng này', money(r.month.revenue), r.month.bills + ' hoá đơn · TB ' + short(r.month.avg) + '/hoá đơn') : '') +
+      card('Đang phục vụ', r.open.tables + ' / ' + r.total_tables + ' bàn', r.open.guests + ' khách đang ngồi', 'text-emerald-400');
+
+    document.getElementById('ovChart').innerHTML = r.series ? dayChart(r.series) : '';
+    document.getElementById('ovChart').parentElement.classList.toggle('hidden', !r.series);
+    document.getElementById('ovTop').innerHTML = barList(
+      r.top_today.map(x => ({ name: x.name, value: x.qty, text: '×' + x.qty })), 'bg-amber-500');
+  }
+</script>

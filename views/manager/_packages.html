@@ -1,0 +1,106 @@
+{# Người phụ trách: Mai Linh
+   Mô tả: Tab Gói buffet: giá, ngày áp dụng, bật/tắt. #}
+      <!-- ===== 8. GÓI BUFFET ===== -->
+      <section id="v-packages" class="hidden space-y-5">
+        <div>
+          <h3 class="text-sm font-black uppercase tracking-widest text-slate-300 mb-3">Buffet đồ ăn</h3>
+          <div id="pkFood" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+        <div>
+          <h3 class="text-sm font-black uppercase tracking-widest text-slate-300 mb-3">Buffet nước</h3>
+          <div id="pkDrink" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+        <p class="text-xs text-slate-500">Hoá đơn đã thanh toán giữ nguyên giá cũ. Bàn đang ăn sẽ tính theo giá mới khi thanh toán.
+          Ảnh menu và thẻ giá ở trang khách (index.html) là cố định, không tự đổi theo giá ở đây.</p>
+      </section>
+
+<!-- ================= GÓI BUFFET ================= -->
+
+<script>
+  // ============ 8. GÓI BUFFET ============
+  const DOW = [[1, 'T2'], [2, 'T3'], [3, 'T4'], [4, 'T5'], [5, 'T6'], [6, 'T7'], [7, 'CN']];
+  let PK = null, editPkId = null, pkDays = new Set(), pkNameTouched = false;
+
+  async function loadPackages() {
+    const r = await api('/api/manager/packages');
+    if (!r.packages) return;
+    PK = r;
+    renderPackages();
+  }
+  function daysText(days) {
+    if (!days.length || days.length === 7) return 'Mọi ngày';
+    return days.map(d => DOW[d - 1][1]).join(', ');
+  }
+  function renderPackages() {
+    const one = p => `
+      <div class="bg-slate-900 border ${p.is_active ? 'border-slate-800' : 'border-slate-800 opacity-50'} rounded-2xl p-5">
+        <div class="flex items-start justify-between gap-2">
+          <p class="text-xs text-slate-400">${esc(p.name)}</p>
+          ${p.is_active ? '' : badge('Đã tắt', 'bg-slate-800 text-slate-400')}
+        </div>
+        <p class="text-3xl font-black text-red-500 mt-1">${money(p.price)}</p>
+        <p class="text-xs text-slate-400 mt-2"><i class="fa-regular fa-calendar mr-1"></i>${daysText(p.days)}</p>
+        <p class="text-xs text-slate-500 mt-1">${p.items} món trong gói${p.open_orders ? ' · ' + p.open_orders + ' bàn đang dùng' : ''}</p>
+        <div class="flex gap-2 mt-4">
+          ${btn('Sửa giá / ngày', B_GRAY, 'openPk', p.id)}
+          ${btn(p.is_active ? 'Tắt' : 'Bật', p.is_active ? B_AMBER : B_GREEN, 'togglePk', p.id)}
+        </div>
+      </div>`;
+    document.getElementById('pkFood').innerHTML = PK.packages.filter(p => p.kind === 'food').map(one).join('');
+    document.getElementById('pkDrink').innerHTML = PK.packages.filter(p => p.kind === 'drink').map(one).join('');
+  }
+
+  function openPk(id) {
+    const p = PK.packages.find(x => String(x.id) === String(id));
+    editPkId = p.id;
+    pkNameTouched = false;
+    pkDays = new Set(p.days);
+    document.getElementById('pkTitle').textContent = 'Sửa ' + p.name;
+    document.getElementById('pkPrice').value = p.price;
+    document.getElementById('pkName').value = p.name;
+    const w = document.getElementById('pkWarn');
+    const notes = [];
+    if (p.open_orders) notes.push('Đang có ' + p.open_orders + ' bàn dùng gói này: nếu đổi giá, các bàn đó sẽ tính theo giá mới khi thanh toán.');
+    if (/\(.*\)/.test(p.name)) notes.push('Tên gói đang ghi sẵn ngày áp dụng, nếu đổi ngày nhớ sửa lại tên cho khớp.');
+    w.innerHTML = notes.map(esc).join('<br>');
+    w.classList.toggle('hidden', !notes.length);
+    formErr('pkErr');
+    renderPkDays();
+    showM('pkgModal');
+  }
+  function renderPkDays() {
+    document.getElementById('pkDays').innerHTML = DOW.map(d => `
+      <button type="button" data-d="${d[0]}" onclick="togglePkDay(Number(this.dataset.d))"
+        class="chip ${pkDays.has(d[0]) ? 'active' : ''} px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-xs font-bold hover:border-red-500 transition">${d[1]}</button>`).join('');
+  }
+  function togglePkDay(d) {
+    if (pkDays.has(d)) pkDays.delete(d); else pkDays.add(d);
+    renderPkDays();
+  }
+  function onPkPrice() {
+    // tên dạng "Buffet 219K" thì tự đổi theo giá, trừ khi bạn đã tự sửa tên
+    if (pkNameTouched) return;
+    const p = PK.packages.find(x => x.id === editPkId);
+    const v = Number(document.getElementById('pkPrice').value);
+    if (/^Buffet \d+K$/i.test(p.name) && v >= 1000 && v % 1000 === 0)
+      document.getElementById('pkName').value = 'Buffet ' + (v / 1000) + 'K';
+  }
+  async function savePk() {
+    const r = await api('/api/manager/package/' + editPkId, {
+      price: document.getElementById('pkPrice').value, name: document.getElementById('pkName').value,
+      days: [...pkDays]
+    });
+    if (!r.success) { formErr('pkErr', r.message || 'Không lưu được'); return; }
+    hideM('pkgModal');
+    toast('Đã cập nhật gói buffet', true);
+    loadPackages();
+  }
+  async function togglePk(id) {
+    const p = PK.packages.find(x => String(x.id) === String(id));
+    if (p.is_active && !confirm('Tắt ' + p.name + '? Phục vụ sẽ không chọn được gói này khi mở bàn.')) return;
+    const r = await api('/api/manager/package/' + id, { is_active: !p.is_active });
+    if (!r.success) { toast(r.message || 'Không đổi được', false); return; }
+    toast(p.is_active ? 'Đã tắt ' + p.name : 'Đã bật ' + p.name, true);
+    loadPackages();
+  }
+</script>
