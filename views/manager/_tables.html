@@ -1,0 +1,115 @@
+{# Người phụ trách: Mai Linh
+   Mô tả: Tab Bàn: thêm/sửa/ẩn/xoá bàn theo tầng. #}
+      <!-- ===== 7. BÀN ===== -->
+      <section id="v-tables" class="hidden space-y-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <button data-f="all" onclick="setTblFloor(this.dataset.f)" class="tf chip active px-3 py-1.5 rounded-full border border-slate-700 bg-slate-900 text-xs font-bold hover:border-red-500">Tất cả</button>
+          <button data-f="1"   onclick="setTblFloor(this.dataset.f)" class="tf chip px-3 py-1.5 rounded-full border border-slate-700 bg-slate-900 text-xs font-bold hover:border-red-500">Tầng 1</button>
+          <button data-f="2"   onclick="setTblFloor(this.dataset.f)" class="tf chip px-3 py-1.5 rounded-full border border-slate-700 bg-slate-900 text-xs font-bold hover:border-red-500">Tầng 2</button>
+          <div class="flex-1"></div>
+          <a href="/qr-ban" target="_blank" data-nomgr class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-black transition">
+            <i class="fa-solid fa-qrcode mr-2"></i>IN MÃ QR BÀN</a>
+          <button onclick="openTbl()" data-nomgr class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-sm font-black transition">
+            <i class="fa-solid fa-plus mr-2"></i>THÊM BÀN</button>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-800 text-slate-400 text-xs uppercase">
+                <tr><th class="text-left px-4 py-3">Mã</th><th class="text-left px-4 py-3">Tên</th>
+                    <th class="text-center px-4 py-3">Tầng</th><th class="text-center px-4 py-3">Loại</th>
+                    <th class="text-right px-4 py-3">Số chỗ</th>
+                    <th class="text-center px-4 py-3">Trạng thái</th><th class="text-right px-4 py-3">Thao tác</th></tr>
+              </thead>
+              <tbody id="tbBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500">Bàn mới hiện ngay ở màn hình phục vụ. Bàn đang có khách thì chưa ẩn được.
+          Bàn đã có hoá đơn thì chỉ ẩn, không xoá.</p>
+      </section>
+
+<!-- ================= BÀN ================= -->
+
+<script>
+  // ============ 7. BÀN ============
+  let TBL = null, tblFloor = 'all', editTblId = null;
+
+  async function loadTables() {
+    const r = await api('/api/manager/tables');
+    if (!r.tables) return;
+    TBL = r.tables;
+    renderTables();
+  }
+  function setTblFloor(f) {
+    tblFloor = f;
+    document.querySelectorAll('.tf').forEach(b => b.classList.toggle('active', b.dataset.f === f));
+    renderTables();
+  }
+  function renderTables() {
+    const list = TBL.filter(t => tblFloor === 'all' || String(t.floor) === tblFloor);
+    document.getElementById('tbBody').innerHTML = list.map(t => `
+      <tr class="border-t border-slate-800 ${t.is_active ? '' : 'opacity-50'}">
+        <td class="px-4 py-3 font-bold text-white">${esc(t.id)}</td>
+        <td class="px-4 py-3 text-slate-300">${esc(t.name)}</td>
+        <td class="px-4 py-3 text-center">${t.floor}</td>
+        <td class="px-4 py-3 text-center">${t.type === 'VIP' ? badge('VIP', 'bg-amber-950 text-amber-300') : '<span class="text-slate-400">Thường</span>'}</td>
+        <td class="px-4 py-3 text-right">${t.type === 'VIP' ? t.min_capacity + '–' + t.capacity : t.capacity}</td>
+        <td class="px-4 py-3 text-center">${!t.is_active ? badge('Đã ẩn', 'bg-slate-800 text-slate-400')
+            : t.busy ? badge('Đang có khách', 'bg-rose-950 text-rose-300') : badge('Trống', 'bg-emerald-950 text-emerald-300')}</td>
+        <td class="px-4 py-3"><div class="flex flex-wrap justify-end gap-1.5">
+          ${ROLE !== 'Quản lí' ? btn('Sửa', B_GRAY, 'openTbl', t.id) : ''}
+          ${btn(t.is_active ? 'Ẩn' : 'Hiện', t.is_active ? B_AMBER : B_GREEN, 'toggleTbl', t.id)}
+          ${ROLE !== 'Quản lí' && t.orders === 0 && !t.busy ? btn('Xoá', B_RED, 'delTbl', t.id) : ''}
+        </div></td>
+      </tr>`).join('') || '<tr><td colspan="8" class="px-4 py-8 text-center text-slate-500">Chưa có bàn.</td></tr>';
+  }
+
+  function openTbl(id) {
+    const t = id ? TBL.find(x => x.id === id) : null;
+    editTblId = t ? t.id : null;
+    document.getElementById('tbTitle').textContent = t ? 'Sửa bàn ' + t.id : 'Thêm bàn';
+    const idEl = document.getElementById('tbId');
+    idEl.value = t ? t.id : ''; idEl.disabled = !!t;
+    idEl.classList.toggle('opacity-50', !!t);
+    document.getElementById('tbName').value = t ? t.name : '';
+    document.getElementById('tbFloor').value = t ? t.floor : (tblFloor === '1' ? '1' : '2');
+    document.getElementById('tbType').value = t ? t.type : 'NORMAL';
+    document.getElementById('tbCap').value = t ? t.capacity : 4;
+    document.getElementById('tbMin').value = t ? t.min_capacity : 1;
+    formErr('tbErr');
+    showM('tblModal');
+    (t ? document.getElementById('tbName') : idEl).focus();
+  }
+  async function saveTbl() {
+    const body = {
+      name: document.getElementById('tbName').value, floor: document.getElementById('tbFloor').value,
+      type: document.getElementById('tbType').value, capacity: document.getElementById('tbCap').value,
+      min_capacity: document.getElementById('tbMin').value
+    };
+    let url = '/api/manager/table/new';
+    if (editTblId) url = '/api/manager/table/' + encodeURIComponent(editTblId);
+    else body.id = document.getElementById('tbId').value;
+    const r = await api(url, body);
+    if (!r.success) { formErr('tbErr', r.message || 'Không lưu được'); return; }
+    hideM('tblModal');
+    toast(editTblId ? 'Đã cập nhật bàn' : 'Đã thêm bàn ' + r.id, true);
+    loadTables();
+  }
+  async function toggleTbl(id) {
+    const t = TBL.find(x => x.id === id);
+    if (t.is_active && !confirm('Ẩn bàn ' + t.name + '? Bàn sẽ không hiện ở màn hình phục vụ.')) return;
+    const r = await api('/api/manager/table/' + encodeURIComponent(id), { is_active: !t.is_active });
+    if (!r.success) { toast(r.message || 'Không đổi được', false); return; }
+    toast(t.is_active ? 'Đã ẩn bàn ' + t.name : 'Đã hiện bàn ' + t.name, true);
+    loadTables();
+  }
+  async function delTbl(id) {
+    const t = TBL.find(x => x.id === id);
+    if (!confirm('Xoá hẳn bàn ' + t.name + '?')) return;
+    const r = await api('/api/manager/table/' + encodeURIComponent(id) + '/delete', {});
+    if (!r.success) { toast(r.message || 'Không xoá được', false); return; }
+    toast('Đã xoá bàn ' + t.name, true);
+    loadTables();
+  }
+</script>

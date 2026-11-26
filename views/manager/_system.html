@@ -1,0 +1,66 @@
+{# Người phụ trách: Mai Linh
+   Mô tả: Tab Hệ thống (Admin): kiểm tra, dọn dữ liệu kẹt, đặt lại PIN. #}
+      <!-- ===== ADMIN: HỆ THỐNG ===== -->
+      <section id="v-system" class="hidden max-w-3xl space-y-5">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div class="flex items-center justify-between gap-3">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Tình trạng hệ thống</h3>
+            <button onclick="loadSystem()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold"><i class="fa-solid fa-rotate mr-1"></i>KIỂM TRA LẠI</button>
+          </div>
+          <div id="sysHealth" class="mt-4 space-y-2 text-sm"></div>
+          <button onclick="sysCleanup()" class="mt-4 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-sm font-black transition">DỌN DỮ LIỆU KẸT</button>
+          <p class="text-xs text-slate-500 mt-2">Trả bàn bị kẹt "đang có khách" (không có đơn mở) về trống, đánh dấu lại bàn đang có đơn, và đóng các yêu cầu gọi nhân viên bị bỏ quên quá 2 giờ.</p>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Đặt lại PIN (khi người dùng quên)</h3>
+          <div class="mt-4 flex flex-wrap gap-3 items-end">
+            <select id="sysAcc" class="fld flex-1 min-w-[12rem]"></select>
+            <input id="sysPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="PIN mới (4 số)" class="fld w-40 text-center">
+            <button onclick="sysResetPin()" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-sm font-black transition">ĐẶT LẠI PIN</button>
+          </div>
+        </div>
+      </section>
+
+<script>
+  // ============ ADMIN: HỆ THỐNG ============
+  async function loadSystem() {
+    const r = await api('/api/manager/system/health');
+    if (!r.success) { toast(r.message || 'Không tải được tình trạng hệ thống', false); return; }
+    const row = (ok, label, detail) => `
+      <div class="flex items-start gap-2">
+        <i class="fa-solid ${ok ? 'fa-circle-check text-emerald-400' : 'fa-triangle-exclamation text-amber-400'} mt-0.5"></i>
+        <div><span class="text-slate-200">${label}</span> <span class="text-slate-400">${detail}</span></div>
+      </div>`;
+    document.getElementById('sysHealth').innerHTML =
+      row(true, 'Máy chủ và database hoạt động', '· ' + esc(r.server_time) + ' · ' + r.db_tables + ' bảng') +
+      row(r.stuck_tables.length === 0, 'Bàn bị kẹt trạng thái', r.stuck_tables.length ? '· ' + r.stuck_tables.map(esc).join(', ') : '· không có') +
+      row(r.old_open_orders === 0, 'Đơn mở quá 12 giờ', '· ' + r.old_open_orders + ' (đang mở: ' + r.open_orders + ')') +
+      row(r.old_calls === 0, 'Yêu cầu gọi nhân viên bị bỏ quên', '· ' + r.old_calls) +
+      row(r.unique_indexes === 2, 'Chỉ mục chống trùng', '· ' + r.unique_indexes + '/2' + (r.unique_indexes === 2 ? '' : ' (hãy chạy lại SQL/21)')) +
+      row(r.plain_pins === 0, 'PIN đã được băm', r.plain_pins ? '· còn ' + r.plain_pins + ' PIN chưa băm (chạy hash_pins.py)' : '') +
+      row(!r.default_secret, 'Khoá bí mật SECRET_KEY', r.default_secret ? '· đang dùng khoá mặc định, hãy đặt SECRET_KEY riêng' : '');
+
+    const a = await api('/api/manager/system/accounts');
+    if (a.staffs) {
+      document.getElementById('sysAcc').innerHTML =
+        a.staffs.map(x => `<option value="staff:${esc(x.id)}">${esc(x.name)} — ${esc(x.role)}${x.is_active ? '' : ' (đã khoá)'}</option>`).join('') +
+        a.stations.map(x => `<option value="station:${esc(x.id)}">Bếp: ${esc(x.name)}</option>`).join('');
+    }
+  }
+  async function sysCleanup() {
+    if (!confirm('Dọn dữ liệu kẹt? Thao tác này chỉ sửa trạng thái bàn và đóng yêu cầu gọi nhân viên cũ.')) return;
+    const r = await api('/api/manager/system/cleanup', {});
+    if (!r.success) { toast(r.message || 'Không dọn được', false); return; }
+    toast('Đã giải phóng ' + r.freed_tables + ' bàn, đánh dấu ' + r.marked_tables + ' bàn, đóng ' + r.closed_calls + ' yêu cầu cũ', true);
+    loadSystem();
+  }
+  async function sysResetPin() {
+    const v = document.getElementById('sysAcc').value.split(':');
+    const pin = document.getElementById('sysPin').value.trim();
+    if (!/^\d{4}$/.test(pin)) { toast('PIN phải gồm đúng 4 chữ số', false); return; }
+    const r = await api('/api/manager/system/reset-pin', { kind: v[0], id: v.slice(1).join(':'), pin: pin });
+    if (!r.success) { toast(r.message || 'Không đặt lại được', false); return; }
+    document.getElementById('sysPin').value = '';
+    toast('Đã đặt lại PIN', true);
+  }
+</script>
