@@ -1,0 +1,48 @@
+{# Người phụ trách: Hồng Ngọc
+   Mô tả: Tab Thống kê món bán chạy. #}
+      <!-- ===== 3. MÓN ===== -->
+      <section id="v-dishes" class="hidden space-y-6">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Món buffet gọi nhiều nhất</h3>
+            <div id="dsBuffet" class="space-y-3"></div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Gọi lẻ / combo / nước bán chạy (theo doanh thu)</h3>
+            <div id="dsPaid" class="space-y-3"></div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Doanh thu gọi lẻ theo nhóm</h3>
+            <div id="dsCat" class="space-y-3"></div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+              Món bị huỷ <span id="dsCancelTotal" class="text-amber-400 ml-1"></span></h3>
+            <div id="dsCancel" class="space-y-3"></div>
+          </div>
+        </div>
+      </section>
+
+<script>
+  // ============ 3. THỐNG KÊ MÓN ============
+  async function loadDishes() {
+    const r = await api('/api/manager/dishes' + qs());
+    if (!r.buffet) return;
+
+    document.getElementById('dsBuffet').innerHTML = barList(
+      r.buffet.map(x => ({ name: x.name, value: x.qty, text: '×' + x.qty })), 'bg-amber-500');
+
+    document.getElementById('dsPaid').innerHTML = barList(
+      r.paid_top.map(x => ({ name: x.name, value: x.revenue,
+        text: money(x.revenue) + ` <span class="text-slate-500 font-medium">· ×${x.qty}</span>` })));
+
+    document.getElementById('dsCat').innerHTML = barList(
+      r.by_category.map(x => ({ name: x.name, value: x.revenue, text: money(x.revenue) })), 'bg-sky-500');
+
+    document.getElementById('printTitle').textContent =
+      'THỐNG KÊ MÓN GYU SACHI · ' + r.from.split('-').reverse().join('/') + ' – ' + r.to.split('-').reverse().join('/');
+    document.getElementById('dsCancelTotal').textContent = r.cancelled_total ? '(' + r.cancelled_total + ' phần)' : '';
+    document.getElementById('dsCancel').innerHTML = barList(
+      r.cancelled.map(x => ({ name: x.name, value: x.qty, text: '×' + x.qty })), 'bg-slate-500');
+  }
+</script>
