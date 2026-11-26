@@ -1,0 +1,61 @@
+# Thay @tai-khoan-nv1 .. @tai-khoan-nv4 bằng tài khoản GitHub thật trước khi commit:
+#   nv1 = Mai Linh, nv2 = Hồng Ngọc, nv3 = Thúy Hằng, nv4 = Nguyên An
+
+# Mai Linh: nền tảng, đăng nhập, quản trị
+/app.py                                   @tai-khoan-nv1
+/config.py                                @tai-khoan-nv1
+/conftest.py                              @tai-khoan-nv1
+/hash_pins.py                             @tai-khoan-nv1
+/restore.py                               @tai-khoan-nv1
+/requirements.txt                         @tai-khoan-nv1
+/.env.example                             @tai-khoan-nv1
+/core/                                    @tai-khoan-nv1
+/models/__init__.py                       @tai-khoan-nv1
+/models/staff_model.py                    @tai-khoan-nv1
+/models/table_model.py                    @tai-khoan-nv1
+/models/settings_model.py                 @tai-khoan-nv1
+/controllers/__init__.py                  @tai-khoan-nv1
+/controllers/auth_controller.py           @tai-khoan-nv1
+/controllers/admin_controller.py          @tai-khoan-nv1
+/views/home/                              @tai-khoan-nv1
+/views/manager/quanli.html                @tai-khoan-nv1
+/views/manager/qr_ban.html                @tai-khoan-nv1
+/views/manager/_staff.html                @tai-khoan-nv1
+/views/manager/_tables.html               @tai-khoan-nv1
+/views/manager/_packages.html             @tai-khoan-nv1
+/views/manager/_settings.html             @tai-khoan-nv1
+/views/manager/_system.html               @tai-khoan-nv1
+/views/manager/_audit.html                @tai-khoan-nv1
+/tests/test_auth.py                       @tai-khoan-nv1
+
+# Hồng Ngọc: thu ngân, báo cáo
+/models/billing_model.py                  @tai-khoan-nv2
+/models/report_model.py                   @tai-khoan-nv2
+/controllers/cashier_controller.py        @tai-khoan-nv2
+/controllers/report_controller.py         @tai-khoan-nv2
+/views/cashier/                           @tai-khoan-nv2
+/views/manager/_overview.html             @tai-khoan-nv2
+/views/manager/_report.html               @tai-khoan-nv2
+/views/manager/_dishes.html               @tai-khoan-nv2
+/tests/test_billing.py                    @tai-khoan-nv2
+
+# Thúy Hằng: phục vụ, khách quét QR
+/models/order_model.py                    @tai-khoan-nv3
+/controllers/staff_controller.py          @tai-khoan-nv3
+/controllers/customer_controller.py       @tai-khoan-nv3
+/views/staff/                             @tai-khoan-nv3
+/views/customer/                          @tai-khoan-nv3
+/tests/test_orders.py                     @tai-khoan-nv3
+
+# Nguyên An: bếp, thực đơn, kho, kiểm thử
+/SQL/                                     @tai-khoan-nv4
+/controllers/kitchen_controller.py        @tai-khoan-nv4
+/controllers/menu_controller.py           @tai-khoan-nv4
+/controllers/inventory_controller.py      @tai-khoan-nv4
+/models/inventory_model.py                @tai-khoan-nv4
+/views/kitchen/                           @tai-khoan-nv4
+/views/manager/_menu.html                 @tai-khoan-nv4
+/views/manager/_pv.html                   @tai-khoan-nv4
+/views/manager/_moves.html                @tai-khoan-nv4
+/tests/test_inventory.py                  @tai-khoan-nv4
+/tests/test_structure.py                  @tai-khoan-nv4
